@@ -23,6 +23,10 @@ source-code: "View the source code."
 improve: "Help improve the project and learn how to contribute."
 
 
+# This is a link in the footer of the index page leading to the project homepage.
+homepage: "Visit the project homepage."
+
+
 # This is the name of the project.
 # Translate this if it makes sense for your language.
 # https://open-web-calendar.hosted.quelltext.eu/

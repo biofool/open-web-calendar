@@ -272,6 +272,9 @@ version: ''
 ## This is a link to the contribution page
 contributing: "https://open-web-calendar.quelltext.eu/contributing/"
 
+## This is a link to the project homepage
+homepage: "https://open-web-calendar.quelltext.eu/"
+
 ## This is a link to the translations page
 translate: "https://hosted.weblate.org/engage/open-web-calendar/"
 
