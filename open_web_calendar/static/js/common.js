@@ -13,6 +13,9 @@ const CALENDAR_ENDPOINT = "/calendar.html";
  * apps can be used, too, like tel:
  */
 const UNSAFE_URL_PROTOCOLS = ["java", "javascript", "vbscript", "data", "file", "about", "chrome", "chrome-extension", "moz-extension"];
+/* Schemes permitted in user/event-sourced hrefs — everything else (#, file:,
+ * javascript:, etc.) is refused by isSafeUrl. */
+const SAFE_URL_PROTOCOLS = ["http", "https", "mailto"];
 
 
 /* Return the properties of an object.

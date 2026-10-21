@@ -8,7 +8,7 @@ SPDX-License-Identifier: GPL-2.0-only
 <html lang="{{ language }}">
     <!-- Mostly copied from https://docs.dhtmlx.com/scheduler/howtostart_nodejs.html#step2addingschedulertothepage -->
     <head>
-        <title>{{ specification["title"] | safe }}</title>
+        <title>{{ specification["title"] }}</title>
         <meta charset="utf-8">
         <link rel="alternate" type="text/calendar" href="/calendar.ics{{ get_query_string() }}" />
         <script type="text/javascript">
@@ -47,7 +47,7 @@ SPDX-License-Identifier: GPL-2.0-only
             {% if not specification['show_participant_status'] %}.PARTICIPANT .status { display: none; }{% endif %}
             {% if not specification['show_participant_type'] %}.PARTICIPANT .type { display: none; }{% endif %}
             {% if not specification['show_participant_role'] %}.PARTICIPANT .role { display: none; }{% endif %}
-            {{ specification['css'] | safe }}
+            {{ specification['css'] | replace('</', '<\\/') | safe }}
         </style>
         {% for link in specification.javascript_url %}
         <script src="{{ link }}" charset="utf-8"></script>
@@ -91,7 +91,7 @@ SPDX-License-Identifier: GPL-2.0-only
         </div>
         <div class="status-window">
             <a class="item" id="errorStatusIcon" href="javascript:toggleErrorWindow();">!</a>
-            <a class="item" id="infoIcon" href="/about.html{{ get_query_string() | safe }}" target="{{ specification['target'] }}">?</a>
+            <a class="item" id="infoIcon" href="/about.html{{ get_query_string() }}" target="{{ specification['target'] }}">?</a>
         </div>
     </body>
 </html>

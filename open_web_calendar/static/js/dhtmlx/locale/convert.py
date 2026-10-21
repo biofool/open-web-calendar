@@ -65,8 +65,15 @@ for file in ["locale_en.js"] + os.listdir("."):  # noqa: PTH208, RUF100
     with open(file) as f:
         r = regex.findall(f.read())
     assert len(r) == 1, r
-    r = r[0].replace("{", "dict(").replace("}", ")").replace(":", "=")
-    r = eval(r, {"__builtins__": {"dict": dict}})
+    # Parse the JS object without eval — eval on file content is escapable
+    # via __subclasses__ chains. Quote bare keys, then ast.literal_eval.
+    import ast
+    js_obj = r[0]
+    py_obj = re.sub(r'([{,]\s*)([A-Za-z_][A-Za-z0-9_]*)\s*:', r'\1"\2":', js_obj)
+    py_obj = re.sub(r"\btrue\b", "True", py_obj)
+    py_obj = re.sub(r"\bfalse\b", "False", py_obj)
+    py_obj = re.sub(r"\bnull\b", "None", py_obj)
+    r = ast.literal_eval(py_obj)
     print(list(r))
     print(r)
     yaml = ""

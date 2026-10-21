@@ -21,6 +21,10 @@ DEFAULT_SPEC = {
 }
 HTML_TAG_MATCH = re.compile("<[^>]*>")
 
+# Cleaner options a query parameter may set — all can only make the output
+# *more* restrictive, never less.
+_ALLOWED_KEYS = {"remove_tags", "kill_tags", "page_structure", "add_nofollow"}
+
 
 def clean_html(bad_html: str, spec: dict) -> str:
     """Clean up the HTML.
@@ -36,11 +40,15 @@ def clean_html(bad_html: str, spec: dict) -> str:
         tree = BeautifulSoup(bad_html, "html.parser")
     bad_html = tree.prettify()
     kw = DEFAULT_SPEC.copy()
+    # Only keys that can ADD restrictions are user-tunable — anything else
+    # (safe_attrs_only, scripts, javascript, allow_tags, ...) could disarm
+    # the sanitizer from a query parameter.
     kw.update(
         {
             name[len(CLEAN_HTML_SPECIFICATION_PREFIX) :]: value
             for name, value in spec.items()
             if name.startswith(CLEAN_HTML_SPECIFICATION_PREFIX)
+            and name[len(CLEAN_HTML_SPECIFICATION_PREFIX) :] in _ALLOWED_KEYS
         }
     )
     cleaner = Cleaner(**kw)

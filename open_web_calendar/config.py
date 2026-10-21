@@ -185,7 +185,11 @@ class Config:
         """
         configured_path = self._source.get("CACHE_DIRECTORY", tempfile.gettempdir())
         cache_path = Path(configured_path) / "open-web-calendar-cache"
-        cache_path.mkdir(parents=True, exist_ok=True)
+        cache_path.mkdir(parents=True, exist_ok=True, mode=0o700)
+        # The cache holds fetched calendar contents (possibly private) and
+        # pickled responses — a world-readable tempdir leaks and allows
+        # tampering by other users on the host.
+        cache_path.chmod(0o700)
         return str(cache_path)
 
 
