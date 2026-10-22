@@ -396,6 +396,19 @@ function loadCalendar() {
     scheduler.attachEvent("onBeforeViewChange", resetConfig);
     scheduler.attachEvent("onSchedulerResize", resetConfig);
 
+    /* The agenda view renders no "today" marker, so custom CSS for the
+     * current date has nothing to hook into. Tag each agenda day group
+     * with .owc_today when its data-date is today (issue #1255). */
+    function tagAgendaToday() {
+        var today = scheduler.date.day_start(new Date());
+        document.querySelectorAll(".dhx_cal_agenda_day[data-date]").forEach(function (el) {
+            var d = scheduler.templates.parse_date(el.getAttribute("data-date"));
+            el.classList.toggle("owc_today", +d === +today);
+        });
+    }
+    scheduler.attachEvent("onViewChange", tagAgendaToday);
+    scheduler.attachEvent("onXLE", tagAgendaToday);
+
     // set the skin, scheduler v7
     // see https://docs.dhtmlx.com/scheduler/skins.html#dark
     scheduler.setSkin(getSkin());
