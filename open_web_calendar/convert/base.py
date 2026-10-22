@@ -25,6 +25,7 @@ from open_web_calendar.calendars import (
 )
 from open_web_calendar.clean_html import clean_html
 from open_web_calendar.encryption import EmptyFernetStore, FernetStore
+from open_web_calendar.url import assert_public_http_url
 
 
 def get_text_from_url(url):
@@ -111,7 +112,10 @@ class ConversionStrategy:
                 result.add_from_text(calendar_text)
             if not result:
                 # We did not find any link to any calendar from this source.
-                # We could have a CalDAV calendar.
+                # We could have a CalDAV calendar. The CalDAV client manages
+                # its own session/redirects, so re-assert the URL is public
+                # before handing it over (SSRF guard — issue #2).
+                assert_public_http_url(url)
                 result = CalDAVCalendars.from_url(url)
                 if not result:
                     raise

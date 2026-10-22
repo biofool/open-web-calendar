@@ -45,9 +45,13 @@ function getQueries() {
 }
 
 function isSafeUrl(urlString) {
-    return !UNSAFE_URL_PROTOCOLS.some(function(protocol) {
-        return urlString.toLowerCase().startsWith(protocol.toLowerCase() + ":");
-    });
+    // Browsers strip whitespace/control chars anywhere in the scheme, so
+    // " java\tscript:…" bypasses a naive startsWith blacklist — normalize
+    // first, then check against the scheme allowlist.
+    var normalized = String(urlString || "").replace(/[\x00-\x20]+/g, "");
+    var m = normalized.match(/^([a-zA-Z][a-zA-Z0-9+.-]*):/);
+    if (!m) return true; // no scheme — relative/same-origin URL
+    return SAFE_URL_PROTOCOLS.indexOf(m[1].toLowerCase()) >= 0;
 }
 
 /* Create a link around the HTML text.

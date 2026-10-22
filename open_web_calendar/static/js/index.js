@@ -797,8 +797,10 @@ function addURLFromInput() {
             console.log(result);
             addURLToList(result.token);
         }).catch(function(error) {
-            console.error(error);
-            addURLToList(url.url);
+            // Do NOT fall back to adding the plaintext URL — it can carry
+            // user:pass credentials that would leak into the shared spec.
+            console.error("encryption failed; URL not added", error);
+            alert("Could not encrypt the private calendar URL — it was not added.");
         })
     } else {
             addURLToList(url.url);

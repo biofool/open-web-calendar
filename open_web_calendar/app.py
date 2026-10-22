@@ -14,7 +14,7 @@ import zoneinfo
 from http import HTTPStatus
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
-from urllib.parse import ParseResult, unquote, urlparse
+from urllib.parse import ParseResult, unquote, urljoin, urlparse
 
 import caldav
 import icalendar
@@ -40,6 +40,7 @@ from .config import environment as config
 from .convert.events import ConvertToEvents
 from .convert.ics import ConvertToICS
 from .encryption import EmptyFernetStore, FernetStore
+from .url import assert_public_http_url
 
 if TYPE_CHECKING:
     from open_web_calendar.convert.base import ConversionStrategy
@@ -149,16 +150,46 @@ def make_js_file_response(content: str) -> Response:
     return response
 
 
+MAX_RESPONSE_BYTES = 10 * 1024 * 1024
+MAX_REDIRECTS = 5
+
+
 def get_text_from_url(url):
     """Return the text from a url.
 
     The result is cached.
+
+    SSRF-hardened: http(s) only, the host must resolve to a public IP at
+    every redirect hop (metadata endpoints and internal hosts are
+    refused), and the body is capped so a hostile server cannot exhaust
+    memory.
     """
-    response = config.requests.get(
-        url, headers=DEFAULT_REQUEST_HEADERS, timeout=config.requests_timeout
-    )
-    response.raise_for_status()
-    return response.content
+    for _ in range(MAX_REDIRECTS):
+        assert_public_http_url(url)
+        response = config.requests.get(
+            url,
+            headers=DEFAULT_REQUEST_HEADERS,
+            timeout=config.requests_timeout,
+            allow_redirects=False,
+            stream=True,
+        )
+        try:
+            if response.is_redirect:
+                location = response.headers.get("Location", "")
+                if not location:
+                    raise ValueError("redirect without Location header")
+                url = urljoin(url, location)
+                continue
+            response.raise_for_status()
+            body = response.raw.read(MAX_RESPONSE_BYTES + 1, decode_content=True)
+        finally:
+            response.close()
+        if len(body) > MAX_RESPONSE_BYTES:
+            raise ValueError(
+                f"response from {url} exceeds the {MAX_RESPONSE_BYTES} byte limit"
+            )
+        return body
+    raise ValueError(f"too many redirects fetching {url}")
 
 
 # @functools.cache
@@ -204,6 +235,8 @@ def get_specification(query=None):
     if url:
         url_specification_response = get_text_from_url(url)
         url_specification_values = yaml.safe_load(url_specification_response)
+        if not isinstance(url_specification_values, dict):
+            raise ValueError("specification_url did not return a mapping")
         specification.update(url_specification_values)
     for parameter in query:
         # get a list of arguments
@@ -391,6 +424,17 @@ def unhandled_exception(error):
     )  # return error code from https://stackoverflow.com/a/7824605
 
 
+@app.template_filter("safe_href")
+def safe_href(url):
+    """Allow only http(s)/mailto/relative URLs into href attributes —
+    a spec value reachable via query params must not yield javascript: links."""
+    try:
+        scheme = urlparse(str(url or "")).scheme.lower()
+    except ValueError:
+        return "#"
+    return url if scheme in ("", "http", "https", "mailto") else "#"
+
+
 @app.post("/encrypt")
 def encrypt():
     """Return the JSON with the encrypted token."""
@@ -408,6 +452,13 @@ def decrypt():
         store = FernetStore.from_environment()
         token = request.json["token"]  # string
         passwords = request.json["passwords"]  # list of strings
+        # Cap the batch — an unbounded list is a password-guessing oracle.
+        if (
+            not isinstance(passwords, list)
+            or len(passwords) > 20
+            or not all(isinstance(p, str) for p in passwords)
+        ):
+            return jsonify({"error": "passwords must be a list of at most 20 strings"}), 400
         return jsonify(
             {
                 "data": store.expose(token, passwords),
@@ -430,6 +481,7 @@ def list_caldav_calendars():
     """Return a list of caldav calendars."""
     try:
         url = request.json["url"]
+        assert_public_http_url(url)
         parsed: ParseResult = urlparse(url)
         username = request.json.get("username", parsed.username)
         password = request.json.get("password", parsed.password)
@@ -469,6 +521,7 @@ def sign_up_for_event():
         if enc.is_encrypted(calendar_url):
             data = enc.decrypt(calendar_url)
             calendar_url = data["url"]
+        assert_public_http_url(calendar_url)
         event: icalendar.Event = icalendar.Event.from_ical(event_ical)
         # check if the event is present
         calendar = CalDAVCalendars.from_url(calendar_url)

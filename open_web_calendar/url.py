@@ -6,7 +6,42 @@
 
 from __future__ import annotations
 
+import ipaddress
+import socket
 from urllib.parse import parse_qs, urlencode, urlparse
+
+
+def assert_public_http_url(url: str) -> None:
+    """Raise ValueError unless ``url`` is a public http(s) URL (SSRF guard).
+
+    Every user-supplied fetch target (``url=``, ``specification_url``,
+    CalDAV endpoints, redirect hops) must pass through here — otherwise a
+    URL pointing at the cloud metadata endpoint or an internal host turns
+    the service into an internal request proxy.
+    """
+    try:
+        parts = urlparse(url)
+    except ValueError as exc:
+        raise ValueError("malformed URL") from exc
+    if parts.scheme not in ("http", "https"):
+        raise ValueError(f"refused non-http(s) URL scheme: {parts.scheme or '?'}")
+    host = parts.hostname
+    if not host:
+        raise ValueError("URL has no host")
+    try:
+        infos = socket.getaddrinfo(host, None)
+    except socket.gaierror as exc:
+        raise ValueError(f"host does not resolve: {host}") from exc
+    for info in infos:
+        try:
+            ip = ipaddress.ip_address(info[4][0])
+        except ValueError as exc:
+            raise ValueError(f"host resolved to an unparseable address: {host}") from exc
+        if (
+            ip.is_private or ip.is_loopback or ip.is_link_local
+            or ip.is_reserved or ip.is_multicast or ip.is_unspecified
+        ):
+            raise ValueError(f"host {host} resolves to a non-public address")
 
 
 class URLCapability:
@@ -57,4 +92,4 @@ class URLCapability:
         return plain_url + "#" + self.to_string()
 
 
-__all__ = ["URLCapability"]
+__all__ = ["URLCapability", "assert_public_http_url"]

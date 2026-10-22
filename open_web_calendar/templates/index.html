@@ -423,16 +423,16 @@ SPDX-License-Identifier: GPL-2.0-only
                 <h2>{{ html("about-title") }}</h2>
                 {{ html("project-description") }}
                 <ul>
-                    <li><a href="{{ specification["contributing"] | safe }}">{{ html("improve") }}</a></li>
-                    <li><a href="{{ specification["homepage"] | safe }}">{{ html("homepage") }}</a></li>
+                    <li><a href="{{ specification["contributing"] | safe_href }}">{{ html("improve") }}</a></li>
+                    <li><a href="{{ specification["homepage"] | safe_href }}">{{ html("homepage") }}</a></li>
                     <li>
-                        <a href="{{ specification["source_code"] | safe }}">{{ html("source-code") }}</a>
+                        <a href="{{ specification["source_code"] | safe_href }}">{{ html("source-code") }}</a>
                         {{ html("version").format(version=
                         specification["version"] if specification["version"] else configuration["version"]
                         )
                         }}
                     </li>
-                    <li><a href="{{ specification["privacy_policy"] | safe }}">{{ html("privacy-policy") }}</a></li>
+                    <li><a href="{{ specification["privacy_policy"] | safe_href }}">{{ html("privacy-policy") }}</a></li>
                 </ul>
             </section>
             <div class="bottom-navigation">
